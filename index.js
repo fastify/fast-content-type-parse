@@ -182,3 +182,4 @@ function safeParse (header) {
 module.exports.default = { parse, safeParse }
 module.exports.parse = parse
 module.exports.safeParse = safeParse
+module.exports.dummyContentType = dummyContentType
