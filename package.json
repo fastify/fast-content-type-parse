@@ -17,6 +17,10 @@
   ],
   "author": "Aras Abbasi <aras.abbasi@gmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fastify/fast-content-type-parse.git"
+  },
   "devDependencies": {
     "@fastify/pre-commit": "^2.0.2",
     "benchmark": "^2.1.4",
