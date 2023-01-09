@@ -5,6 +5,7 @@
   "main": "index.js",
   "types": "./types/index.d.ts",
   "scripts": {
+    "benchmark": "node benchmarks/simple.js && node benchmarks/simple-ows.js && node benchmarks/with-param.js && node benchmarks/with-param-quoted.js",
     "lint": "standard",
     "lint:fix": "standard --fix",
     "test": "npm run test:unit && npm run test:typescript",
