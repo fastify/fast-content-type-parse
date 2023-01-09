@@ -1,4 +1,4 @@
-import { parse, safeParse } from '..'
+import { parse, safeParse, defaultContentType } from '..'
 import { expectType, expectError } from 'tsd'
 
 expectError(parse())
@@ -14,3 +14,6 @@ expectError(safeParse(123))
 
 expectType<string>(safeParse('string').type)
 expectType<Record<string, string>>(safeParse('string').parameters)
+
+expectType<string>(defaultContentType.type)
+expectType<Record<string, string>>(defaultContentType.parameters)

@@ -27,8 +27,6 @@ const paramRE = /; *([!#$%&'*+.^_`|~0-9A-Za-z-]+)=("(?:[\u000b\u0020\u0021\u0023
  */
 const quotedPairRE = /\\([\u000b\u0020-\u00ff])/g // eslint-disable-line no-control-regex
 
-const token = '[!#$%&\'*+.^_|~0-9A-Za-z-]+'
-
 /**
  * RegExp to match type in RFC 7231 sec 3.1.1.1
  *
@@ -36,9 +34,12 @@ const token = '[!#$%&\'*+.^_|~0-9A-Za-z-]+'
  * type       = token
  * subtype    = token
  */
-const mediaTypeRE = RegExp(`^${token}/${token}$`)
+const mediaTypeRE = /^[!#$%&'*+.^_|~0-9A-Za-z-]+\/[!#$%&'*+.^_|~0-9A-Za-z-]+$/
 
-const stringIndexOf = String.prototype.indexOf
+// default ContentType to prevent repeated object creation
+const defaultContentType = { type: '', parameters: new NullObject() }
+Object.freeze(defaultContentType.parameters)
+Object.freeze(defaultContentType)
 
 /**
  * Parse media type to object.
@@ -53,16 +54,10 @@ function parse (header) {
     throw new TypeError('argument header is required and must be a string')
   }
 
-  let index = stringIndexOf.call(header, ';')
-  let type = index !== -1
-    ? header.slice(0, index)
-    : header
-
-  if (type[0] === ' ') {
-    type = type.trim()
-  } else if (type[type.length - 1] === ' ') {
-    type = type.trim()
-  }
+  let index = header.indexOf(';')
+  const type = index !== -1
+    ? header.slice(0, index).trim()
+    : header.trim()
 
   if (mediaTypeRE.test(type) === false) {
     throw new TypeError('invalid media type')
@@ -111,29 +106,18 @@ function parse (header) {
   return result
 }
 
-// dummy here to prevent repeated object creation
-const dummyContentType = { type: '', parameters: new NullObject() }
-Object.freeze(dummyContentType.parameters)
-Object.freeze(dummyContentType)
-
 function safeParse (header) {
   if (typeof header !== 'string') {
-    return dummyContentType
+    return defaultContentType
   }
 
-  let index = stringIndexOf.call(header, ';')
-  let type = index !== -1
-    ? header.slice(0, index)
-    : header
-
-  if (type[0] === ' ') {
-    type = type.trim()
-  } else if (type[type.length - 1] === ' ') {
-    type = type.trim()
-  }
+  let index = header.indexOf(';')
+  const type = index !== -1
+    ? header.slice(0, index).trim()
+    : header.trim()
 
   if (mediaTypeRE.test(type) === false) {
-    return dummyContentType
+    return defaultContentType
   }
 
   const result = {
@@ -154,7 +138,7 @@ function safeParse (header) {
 
   while ((match = paramRE.exec(header))) {
     if (match.index !== index) {
-      return dummyContentType
+      return defaultContentType
     }
 
     index += match[0].length
@@ -173,7 +157,7 @@ function safeParse (header) {
   }
 
   if (index !== header.length) {
-    return dummyContentType
+    return defaultContentType
   }
 
   return result
@@ -182,4 +166,4 @@ function safeParse (header) {
 module.exports.default = { parse, safeParse }
 module.exports.parse = parse
 module.exports.safeParse = safeParse
-module.exports.dummyContentType = dummyContentType
+module.exports.defaultContentType = defaultContentType
