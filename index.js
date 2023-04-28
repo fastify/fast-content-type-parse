@@ -122,7 +122,8 @@ function safeParse (header) {
 
   const result = {
     type: type.toLowerCase(),
-    parameters: new NullObject()
+    parameters: new NullObject(),
+    parametersIndices: new NullObject()
   }
 
   // parse parameters
@@ -131,8 +132,10 @@ function safeParse (header) {
   }
 
   let key
+  let keyIndex
   let match
   let value
+  let valueIndex
 
   paramRE.lastIndex = index
 
@@ -143,17 +146,22 @@ function safeParse (header) {
 
     index += match[0].length
     key = match[1].toLowerCase()
+    keyIndex = match.index + 2
     value = match[2]
+    valueIndex = match.index + (match[0].length - value.length)
 
     if (value[0] === '"') {
       // remove quotes and escapes
       value = value
         .slice(1, value.length - 1)
 
+      ++valueIndex
+
       quotedPairRE.test(value) && (value = value.replace(quotedPairRE, '$1'))
     }
 
     result.parameters[key] = value
+    result.parametersIndices[key] = { keyAt: keyIndex, valueAt: valueIndex }
   }
 
   if (index !== header.length) {
