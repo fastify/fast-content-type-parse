@@ -27,7 +27,7 @@ const fastContentTypeParse = require('fast-content-type-parse')
 ### fastContentTypeParse.parse(string)
 
 ```js
-const contenType = fastContentTypeParse.parse('application/json; charset=utf-8')
+const contentType = fastContentTypeParse.parse('application/json; charset=utf-8')
 ```
 
 Parse a `Content-Type` header. Throws a `TypeError` if the string is invalid.
@@ -44,7 +44,7 @@ the string `'application/json; charset=utf-8'`):
 ### fastContentTypeParse.safeParse(string)
 
 ```js
-const contenType = fastContentTypeParse.safeParse('application/json; charset=utf-8')
+const contentType = fastContentTypeParse.safeParse('application/json; charset=utf-8')
 ```
 
 Parse a `Content-Type` header. It will not throw an Error if the header is invalid.
