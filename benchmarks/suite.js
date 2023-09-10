@@ -1,6 +1,6 @@
 'use strict'
 
-const util = require('util')
+const util = require('node:util')
 const contentType = require('content-type')
 const fastContentTypeParser = require('..')
 const Benchmark = require('benchmark')
