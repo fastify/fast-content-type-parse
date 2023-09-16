@@ -17,7 +17,7 @@ NullObject.prototype = Object.create(null)
  * obs-text      = %x80-FF
  * quoted-pair   = "\" ( HTAB / SP / VCHAR / obs-text )
  */
-const paramRE = /; *([!#$%&'*+.^\w`|~-]+)=("(?:[\u000b\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u00ff]|\\[\u000b\u0020-\u00ff])*"|[!#$%&'*+.^\w`|~-]+) */g // eslint-disable-line no-control-regex
+const paramRE = /; *([!#$%&'*+.^\w`|~-]+)=("(?:[\v\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u00ff]|\\[\v\u0020-\u00ff])*"|[!#$%&'*+.^\w`|~-]+) */g
 
 /**
  * RegExp to match quoted-pair in RFC 7230 sec 3.2.6
@@ -25,7 +25,7 @@ const paramRE = /; *([!#$%&'*+.^\w`|~-]+)=("(?:[\u000b\u0020\u0021\u0023-\u005b\
  * quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
  * obs-text    = %x80-FF
  */
-const quotedPairRE = /\\([\u000b\u0020-\u00ff])/g // eslint-disable-line no-control-regex
+const quotedPairRE = /\\([\v\u0020-\u00ff])/g
 
 /**
  * RegExp to match type in RFC 7231 sec 3.1.1.1
