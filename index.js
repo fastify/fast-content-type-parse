@@ -17,7 +17,7 @@ NullObject.prototype = Object.create(null)
  * obs-text      = %x80-FF
  * quoted-pair   = "\" ( HTAB / SP / VCHAR / obs-text )
  */
-const paramRE = /; *([!#$%&'*+.^_`|~0-9A-Za-z-]+)=("(?:[\u000b\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u00ff]|\\[\u000b\u0020-\u00ff])*"|[!#$%&'*+.^_`|~0-9A-Za-z-]+) */g // eslint-disable-line no-control-regex
+const paramRE = /; *([!#$%&'*+.^\w`|~-]+)=("(?:[\u000b\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u00ff]|\\[\u000b\u0020-\u00ff])*"|[!#$%&'*+.^\w`|~-]+) */g // eslint-disable-line no-control-regex
 
 /**
  * RegExp to match quoted-pair in RFC 7230 sec 3.2.6
@@ -34,7 +34,7 @@ const quotedPairRE = /\\([\u000b\u0020-\u00ff])/g // eslint-disable-line no-cont
  * type       = token
  * subtype    = token
  */
-const mediaTypeRE = /^[!#$%&'*+.^_|~0-9A-Za-z-]+\/[!#$%&'*+.^_|~0-9A-Za-z-]+$/
+const mediaTypeRE = /^[!#$%&'*+.^\w|~-]+\/[!#$%&'*+.^\w|~-]+$/
 
 // default ContentType to prevent repeated object creation
 const defaultContentType = { type: '', parameters: new NullObject() }
