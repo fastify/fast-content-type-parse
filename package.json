@@ -1,6 +1,6 @@
 {
   "name": "fast-content-type-parse",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Parse HTTP Content-Type header according to RFC 7231",
   "main": "index.js",
   "types": "./types/index.d.ts",
