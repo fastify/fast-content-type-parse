@@ -17,4 +17,4 @@ on:
 
 jobs:
   test:
-    uses: fastify/workflows/.github/workflows/plugins-ci-package-manager.yml@v3
+    uses: fastify/workflows/.github/workflows/plugins-ci-package-manager.yml@29329a13c391edeae7d2aa401cbf7664ef830393
