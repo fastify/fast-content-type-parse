@@ -138,9 +138,6 @@ dist
 # macOS files
 .DS_Store
 
-# Clinic
-.clinic
-
 # lock files
 bun.lockb
 package-lock.json
@@ -150,3 +147,6 @@ yarn.lock
 # editor files
 .vscode
 .idea
+
+# tap files
+.tap/
