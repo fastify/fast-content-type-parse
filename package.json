@@ -29,7 +29,7 @@
     "busboy": "^1.6.0",
     "content-type": "^1.0.4",
     "standard": "^17.0.0",
-    "tap": "^18.7.1",
+    "tap": "^19.2.5",
     "tsd": "^0.31.0"
   },
   "pre-commit": [
