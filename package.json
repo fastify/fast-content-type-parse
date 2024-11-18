@@ -23,6 +23,10 @@
     "type": "git",
     "url": "git+https://github.com/fastify/fast-content-type-parse.git"
   },
+  "bugs": {
+    "url": "https://github.com/fastify/fast-content-type-parse/issues"
+  },
+  "homepage": "https://github.com/fastify/fast-content-type-parse#readme",
   "devDependencies": {
     "@fastify/pre-commit": "^2.1.0",
     "benchmark": "^2.1.4",
