@@ -6,7 +6,7 @@ Parse HTTP Content-Type header according to RFC 7231
 
 [![NPM version](https://img.shields.io/npm/v/fast-content-type-parse.svg?style=flat)](https://www.npmjs.com/package/fast-content-type-parse)
 [![NPM downloads](https://img.shields.io/npm/dm/fast-content-type-parse.svg?style=flat)](https://www.npmjs.com/package/fast-content-type-parse)
-[![Build Status](https://github.com/fastify/fast-content-type-parse/workflows/CI/badge.svg)](https://github.com/fastify/fast-content-type-parse/actions)
+[![CI](https://github.com/fastify/fast-content-type-parse/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/fastify/fast-content-type-parse/actions/workflows/ci.yml)
 [![js-standard-style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg?style=flat)](https://standardjs.com/)
 [![Security Responsible Disclosure](https://img.shields.io/badge/Security-Responsible%20Disclosure-yellow.svg)](https://github.com/fastify/.github/blob/main/SECURITY.md)
 
