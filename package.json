@@ -7,8 +7,8 @@
   "types": "./types/index.d.ts",
   "scripts": {
     "benchmark": "node benchmarks/simple.js && node benchmarks/simple-ows.js && node benchmarks/with-param.js && node benchmarks/with-param-quoted.js",
-    "lint": "standard",
-    "lint:fix": "standard --fix",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
     "test": "npm run test:unit && npm run test:typescript",
     "test:typescript": "tsd",
     "test:unit": "tap"
@@ -32,7 +32,7 @@
     "benchmark": "^2.1.4",
     "busboy": "^1.6.0",
     "content-type": "^1.0.4",
-    "standard": "^17.0.0",
+    "neostandard": "^0.11.9",
     "tap": "^19.2.5",
     "tsd": "^0.31.0"
   },

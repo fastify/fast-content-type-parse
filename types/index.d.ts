@@ -11,9 +11,9 @@ interface FastContentTypeParse {
 
 declare namespace fastContentTypeParse {
 
-  export function parse(header: string): ContentType;
-  export function safeParse(header: string): ContentType;
-  export const defaultContentType: ContentType;
+  export function parse (header: string): ContentType
+  export function safeParse (header: string): ContentType
+  export const defaultContentType: ContentType
 
   const fastContentTypeParse: FastContentTypeParse
   export { fastContentTypeParse as default }
