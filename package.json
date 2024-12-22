@@ -18,6 +18,26 @@
     "rfc7231"
   ],
   "author": "Aras Abbasi <aras.abbasi@gmail.com>",
+  "contributors": [
+    {
+      "name": "Gürgün Dayıoğlu",
+      "email": "hey@gurgun.day",
+      "url": "https://heyhey.to/G"
+    },
+    {
+      "name": "Manuel Spigolon",
+      "email": "behemoth89@gmail.com"
+    },
+    {
+      "name": "James Sumners",
+      "url": "https://james.sumners.info"
+    },
+    {
+      "name": "Frazer Smith",
+      "email": "frazer.dev@icloud.com",
+      "url": "https://github.com/fdawgs"
+    }
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -27,6 +47,16 @@
     "url": "https://github.com/fastify/fast-content-type-parse/issues"
   },
   "homepage": "https://github.com/fastify/fast-content-type-parse#readme",
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/fastify"
+    },
+    {
+      "type": "opencollective",
+      "url": "https://opencollective.com/fastify"
+    }
+  ],
   "devDependencies": {
     "@fastify/pre-commit": "^2.1.0",
     "benchmark": "^2.1.4",
