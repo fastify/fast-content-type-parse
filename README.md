@@ -1,7 +1,5 @@
 # fast-content-type-parse
 
-Parse HTTP Content-Type header according to RFC 7231
-
 <div align="center">
 
 [![NPM version](https://img.shields.io/npm/v/fast-content-type-parse.svg?style=flat)](https://www.npmjs.com/package/fast-content-type-parse)
@@ -11,6 +9,8 @@ Parse HTTP Content-Type header according to RFC 7231
 [![Security Responsible Disclosure](https://img.shields.io/badge/Security-Responsible%20Disclosure-yellow.svg)](https://github.com/fastify/.github/blob/main/SECURITY.md)
 
 </div>
+
+Parse HTTP Content-Type header according to RFC 7231.
 
 ## Installation
 
@@ -35,11 +35,11 @@ Parse a `Content-Type` header. Throws a `TypeError` if the string is invalid.
 It will return an object with the following properties (examples are shown for
 the string `'application/json; charset=utf-8'`):
 
- - `type`: The media type (the type and subtype, always lower case).
+ - `type`: The media type (the type and subtype, always lowercase).
    Example: `'application/json'`
 
  - `parameters`: An object of the parameters in the media type (name of parameter
-   always lower case). Example: `{charset: 'utf-8'}`
+   always lowercase). Example: `{charset: 'utf-8'}`
 
 ### fastContentTypeParse.safeParse(string)
 
@@ -52,11 +52,11 @@ Parse a `Content-Type` header. It will not throw an Error if the header is inval
 This will return an object with the following
 properties (examples are shown for the string `'application/json; charset=utf-8'`):
 
- - `type`: The media type (the type and subtype, always lower case).
+ - `type`: The media type (the type and subtype, always lowercase).
    Example: `'application/json'`
 
  - `parameters`: An object of the parameters in the media type (name of parameter
-   always lower case). Example: `{charset: 'utf-8'}`
+   always lowercase). Example: `{charset: 'utf-8'}`
 
 In case the header is invalid, it will return an object
 with an empty string `''` as type and an empty Object for `parameters`.
@@ -75,4 +75,8 @@ Fastest is fast-content-type-parse#parse
 
 ## Credits
 
-Based on the npm package `content-type`
+Based on the npm package `content-type`.
+
+## License
+
+Licensed under [MIT](./LICENSE).
