@@ -9,8 +9,8 @@
     "lint:fix": "eslint --fix",
     "test": "npm run test:unit && npm run test:typescript",
     "test:typescript": "tsd",
-    "jazzer:errors": "jazzer benchmarks/fuzzer-check-errors jazzer-out --sync -- -max_total_time=60",
-    "jazzer:performance": "jazzer benchmarks/fuzzer-check-performance jazzer-out --sync -- -max_total_time=60",
+    "jazzer:errors": "jazzer benchmarks/fuzzer-check-errors --sync --timeout=100 -- -max_total_time=120",
+    "jazzer:performance": "jazzer benchmarks/fuzzer-check-performance --sync --timeout=100 -- -max_total_time=120",
     "test:unit": "c8 --100 node --test"
   },
   "keywords": [

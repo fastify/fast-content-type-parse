@@ -150,4 +150,3 @@ yarn.lock
 
 # tap files
 .tap/
-jazzer-out/
