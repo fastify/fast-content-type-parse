@@ -1,5 +1,5 @@
 const { FuzzedDataProvider } = require('@jazzer.js/core')
-const fastContentTypeParse = require('fast-content-type-parse')
+const fastContentTypeParse = require('../index.js')
 
 function fuzz (data) {
   const provider = new FuzzedDataProvider(data)

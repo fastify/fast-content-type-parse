@@ -2,7 +2,9 @@
   "name": "fast-content-type-parse",
   "version": "3.0.0",
   "description": "Parse HTTP Content-Type header according to RFC 7231",
-  "main": "fuzzer.js",
+  "main": "index.js",
+  "type": "commonjs",
+  "types": "./types/index.d.ts",
   "scripts": {
     "benchmark": "node benchmarks/simple.js && node benchmarks/simple-ows.js && node benchmarks/with-param.js && node benchmarks/with-param-quoted.js",
     "lint": "eslint",
@@ -66,8 +68,5 @@
     "eslint": "^9.17.0",
     "neostandard": "^0.12.0",
     "tsd": "^0.33.0"
-  },
-  "dependencies": {
-    "fast-content-type-parse": "^3.0.0"
   }
 }
