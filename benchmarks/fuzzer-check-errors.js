@@ -1,3 +1,5 @@
+'use strict'
+
 const { FuzzedDataProvider } = require('@jazzer.js/core')
 const fastContentTypeParse = require('../index.js')
 
