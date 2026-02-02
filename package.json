@@ -11,6 +11,8 @@
     "lint:fix": "eslint --fix",
     "test": "npm run test:unit && npm run test:typescript",
     "test:typescript": "tsd",
+    "jazzer:errors": "npm rebuild @jazzer.js/core && jazzer benchmarks/fuzzer-check-errors --sync --timeout=100 -- -max_total_time=120",
+    "jazzer:performance": "npm rebuild @jazzer.js/core && jazzer benchmarks/fuzzer-check-performance --sync --timeout=100 -- -max_total_time=120",
     "test:unit": "c8 --100 node --test"
   },
   "keywords": [
@@ -58,6 +60,7 @@
     }
   ],
   "devDependencies": {
+    "@jazzer.js/core": "^2.1.0",
     "benchmark": "^2.1.4",
     "busboy": "^1.6.0",
     "c8": "^10.1.3",
