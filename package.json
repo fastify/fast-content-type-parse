@@ -60,7 +60,7 @@
     }
   ],
   "devDependencies": {
-    "@jazzer.js/core": "^2.1.0",
+    "@jazzer.js/core": "^4.0.0",
     "benchmark": "^2.1.4",
     "busboy": "^1.6.0",
     "c8": "^11.0.0",
