@@ -10,7 +10,7 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "test": "npm run test:unit && npm run test:typescript",
-    "test:typescript": "tsd",
+    "test:typescript": "tstyche",
     "jazzer:errors": "npm rebuild @jazzer.js/core && jazzer benchmarks/fuzzer-check-errors --sync --timeout=100 -- -max_total_time=120",
     "jazzer:performance": "npm rebuild @jazzer.js/core && jazzer benchmarks/fuzzer-check-performance --sync --timeout=100 -- -max_total_time=120",
     "test:unit": "c8 --100 node --test"
@@ -67,6 +67,6 @@
     "content-type": "^1.0.4",
     "eslint": "^9.17.0",
     "neostandard": "^0.13.0",
-    "tsd": "^0.33.0"
+    "tstyche": "^7.0.0"
   }
 }
