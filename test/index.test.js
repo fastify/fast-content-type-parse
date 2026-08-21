@@ -1,7 +1,7 @@
 'use strict'
 
 const { test } = require('node:test')
-const { parse, safeParse } = require('..')
+const { parse, safeParse, defaultContentType } = require('..')
 
 const invalidTypes = [
   ' ',
@@ -18,7 +18,7 @@ const invalidTypes = [
 ]
 
 test('parse', async function (t) {
-  t.plan(13 + invalidTypes.length)
+  t.plan(14 + invalidTypes.length)
   await t.test('should parse basic type', function (t) {
     t.plan(1)
     const type = parse('text/html')
@@ -35,6 +35,17 @@ test('parse', async function (t) {
     t.plan(1)
     const type = parse(' text/html ')
     t.assert.deepStrictEqual(type.type, 'text/html')
+  })
+
+  await t.test('should parse basic type with surrounding unicode whitespace', function (t) {
+    t.plan(7)
+    t.assert.deepStrictEqual(parse('\ttext/html\t').type, 'text/html')
+    t.assert.deepStrictEqual(parse('\r\ntext/html\r\n').type, 'text/html')
+    t.assert.deepStrictEqual(parse('\u00a0text/html\u00a0').type, 'text/html')
+    t.assert.deepStrictEqual(parse('\u2003text/html\u2003').type, 'text/html')
+    t.assert.deepStrictEqual(parse('\u3000text/html\ufeff').type, 'text/html')
+    t.assert.deepStrictEqual(parse('\u2028text/html\u2029').type, 'text/html')
+    t.assert.deepStrictEqual(parse('text/html\n; charset=utf-8').parameters.charset, 'utf-8')
   })
 
   await t.test('should parse parameters', function (t) {
@@ -108,10 +119,18 @@ test('parse', async function (t) {
   })
 
   await t.test('should throw on invalid parameter format', function (t) {
-    t.plan(3)
+    t.plan(11)
     t.assert.throws(parse.bind(null, 'text/plain; foo="bar'), new TypeError('invalid parameter format'))
     t.assert.throws(parse.bind(null, 'text/plain; profile=http://localhost; foo=bar'), new TypeError('invalid parameter format'))
     t.assert.throws(parse.bind(null, 'text/plain; profile=http://localhost'), new TypeError('invalid parameter format'))
+    t.assert.throws(parse.bind(null, 'text/plain; foo'), new TypeError('invalid parameter format'))
+    t.assert.throws(parse.bind(null, 'text/plain; =bar'), new TypeError('invalid parameter format'))
+    t.assert.throws(parse.bind(null, 'text/plain; foo ="bar"'), new TypeError('invalid parameter format'))
+    t.assert.throws(parse.bind(null, 'text/plain; foo='), new TypeError('invalid parameter format'))
+    t.assert.throws(parse.bind(null, 'text/plain; foo= bar'), new TypeError('invalid parameter format'))
+    t.assert.throws(parse.bind(null, 'text/plain; foo="ba\\\tr"'), new TypeError('invalid parameter format'))
+    t.assert.throws(parse.bind(null, 'text/plain; foo="bar\\'), new TypeError('invalid parameter format'))
+    t.assert.throws(parse.bind(null, 'text/plain; foo="b\tar"'), new TypeError('invalid parameter format'))
   })
 
   await t.test('should require argument', function (t) {
@@ -128,7 +147,7 @@ test('parse', async function (t) {
 })
 
 test('safeParse', async function (t) {
-  t.plan(13 + invalidTypes.length)
+  t.plan(14 + invalidTypes.length)
   await t.test('should safeParse basic type', function (t) {
     t.plan(1)
     const type = safeParse('text/html')
@@ -145,6 +164,17 @@ test('safeParse', async function (t) {
     t.plan(1)
     const type = safeParse(' text/html ')
     t.assert.deepStrictEqual(type.type, 'text/html')
+  })
+
+  await t.test('should safeParse basic type with surrounding unicode whitespace', function (t) {
+    t.plan(7)
+    t.assert.deepStrictEqual(safeParse('\ttext/html\t').type, 'text/html')
+    t.assert.deepStrictEqual(safeParse('\r\ntext/html\r\n').type, 'text/html')
+    t.assert.deepStrictEqual(safeParse('\u00a0text/html\u00a0').type, 'text/html')
+    t.assert.deepStrictEqual(safeParse('\u2003text/html\u2003').type, 'text/html')
+    t.assert.deepStrictEqual(safeParse('\u3000text/html\ufeff').type, 'text/html')
+    t.assert.deepStrictEqual(safeParse('\u2028text/html\u2029').type, 'text/html')
+    t.assert.deepStrictEqual(safeParse('text/html\n; charset=utf-8').parameters.charset, 'utf-8')
   })
 
   await t.test('should safeParse parameters', function (t) {
@@ -219,7 +249,7 @@ test('safeParse', async function (t) {
   })
 
   await t.test('should return dummyContentType on invalid parameter format', function (t) {
-    t.plan(6)
+    t.plan(11)
     t.assert.deepStrictEqual(safeParse('text/plain; foo="bar').type, '')
     t.assert.deepStrictEqual(Object.keys(safeParse('text/plain; foo="bar').parameters).length, 0)
 
@@ -228,6 +258,12 @@ test('safeParse', async function (t) {
 
     t.assert.deepStrictEqual(safeParse('text/plain; profile=http://localhost').type, '')
     t.assert.deepStrictEqual(Object.keys(safeParse('text/plain; profile=http://localhost').parameters).length, 0)
+
+    t.assert.strictEqual(safeParse('text/plain; foo'), defaultContentType)
+    t.assert.strictEqual(safeParse('text/plain; =bar'), defaultContentType)
+    t.assert.strictEqual(safeParse('text/plain; foo='), defaultContentType)
+    t.assert.strictEqual(safeParse('text/plain; foo="ba\\\tr"'), defaultContentType)
+    t.assert.strictEqual(safeParse('text/plain; foo="bar\\'), defaultContentType)
   })
 
   await t.test('should return dummyContentType on missing argument', function (t) {
