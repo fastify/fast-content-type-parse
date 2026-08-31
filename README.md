@@ -60,13 +60,15 @@ with an empty string `''` as type and an empty Object for `parameters`.
 ## Benchmarks
 
 ```sh
-node benchmarks/index.js
-util#MIMEType x 1,206,781 ops/sec ±0.22% (96 runs sampled)
-fast-content-type-parse#parse x 3,752,236 ops/sec ±0.42% (96 runs sampled)
-fast-content-type-parse#safeParse x 3,675,645 ops/sec ±1.09% (94 runs sampled)
-content-type#parse x 1,452,582 ops/sec ±0.37% (95 runs sampled)
-busboy#parseContentType x 924,306 ops/sec ±0.43% (94 runs sampled)
-Fastest is fast-content-type-parse#parse
+npm run benchmark
+
+Benchmarking: "application/json; charset=utf-8"
+util#MIMEType x 2,637,188 ops/sec ±0.95% (93 runs sampled)
+fast-content-type-parse#parse x 5,165,077 ops/sec ±0.75% (95 runs sampled)
+fast-content-type-parse#safeParse x 5,189,599 ops/sec ±0.72% (94 runs sampled)
+content-type#parse x 4,227,069 ops/sec ±0.79% (96 runs sampled)
+busboy#parseContentType x 777,787 ops/sec ±0.75% (91 runs sampled)
+Fastest is fast-content-type-parse#safeParse,fast-content-type-parse#parse
 ```
 
 ## Credits

@@ -3,43 +3,263 @@
 const NullObject = function NullObject () { }
 NullObject.prototype = Object.create(null)
 
-/**
- * RegExp to match *( ";" parameter ) in RFC 7231 sec 3.1.1.1
- *
- * parameter     = token "=" ( token / quoted-string )
- * token         = 1*tchar
- * tchar         = "!" / "#" / "$" / "%" / "&" / "'" / "*"
- *               / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
- *               / DIGIT / ALPHA
- *               ; any VCHAR, except delimiters
- * quoted-string = DQUOTE *( qdtext / quoted-pair ) DQUOTE
- * qdtext        = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
- * obs-text      = %x80-FF
- * quoted-pair   = "\" ( HTAB / SP / VCHAR / obs-text )
- */
-const paramRE = /; *([!#$%&'*+.^\w`|~-]+)=("(?:[\v\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u00ff]|\\[\v\u0020-\u00ff])*"|[!#$%&'*+.^\w`|~-]+) */gu
+const SP = 0x20 // ' '
+const SEMI = 0x3b // ';'
+const EQ = 0x3d // '='
+const SLASH = 0x2f // '/'
+const DQUOTE = 0x22 // '"'
+const BSLASH = 0x5c // '\'
 
 /**
- * RegExp to match quoted-pair in RFC 7230 sec 3.2.6
+ * Character class lookup table, indexed by UTF-16 code unit. It covers the
+ * whole code unit range so that lookups are never out of bounds and always
+ * yield a small integer, which keeps the scanning loops on V8's fast path.
  *
- * quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
- * obs-text    = %x80-FF
+ * tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*"
+ *       / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
+ *       / DIGIT / ALPHA
+ *       ; any VCHAR, except delimiters
+ *
+ * qdtext = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
+ * obs-text = %x80-FF
+ *
+ * MEDIA_TYPE_TCHAR intentionally omits "`" and QDTEXT accepts VT (0x0b)
+ * rather than HTAB, to keep the behaviour of the regular expressions that
+ * were previously used for validation.
  */
-const quotedPairRE = /\\([\v\u0020-\u00ff])/gu
+const MEDIA_TYPE_TCHAR = 1
+const PARAM_TCHAR = 2
+const QDTEXT = 4
+const UPPER = 8
+
+const CHAR_CLASS = new Uint8Array(0x10000)
+for (const ch of '!#$%&\'*+-.^_|~0123456789abcdefghijklmnopqrstuvwxyz') {
+  CHAR_CLASS[ch.charCodeAt(0)] = MEDIA_TYPE_TCHAR | PARAM_TCHAR
+}
+for (const ch of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
+  CHAR_CLASS[ch.charCodeAt(0)] = MEDIA_TYPE_TCHAR | PARAM_TCHAR | UPPER
+}
+CHAR_CLASS[0x60] = PARAM_TCHAR // '`'
+CHAR_CLASS[0x0b] |= QDTEXT
+CHAR_CLASS[0x20] |= QDTEXT
+CHAR_CLASS[0x21] |= QDTEXT
+for (let i = 0x23; i <= 0x5b; i++) CHAR_CLASS[i] |= QDTEXT
+for (let i = 0x5d; i <= 0x7e; i++) CHAR_CLASS[i] |= QDTEXT
+for (let i = 0x80; i <= 0xff; i++) CHAR_CLASS[i] |= QDTEXT
 
 /**
- * RegExp to match type in RFC 7231 sec 3.1.1.1
- *
- * media-type = type "/" subtype
- * type       = token
- * subtype    = token
+ * Whitespace as removed by `String.prototype.trim()`: WhiteSpace and
+ * LineTerminator code points per ECMA-262.
  */
-const mediaTypeRE = /^[!#$%&'*+.^\w|~-]+\/[!#$%&'*+.^\w|~-]+$/u
+function isTrimWhitespace (code) {
+  if (code <= 0x20) {
+    return code === 0x20 || (code >= 0x09 && code <= 0x0d)
+  }
+  if (code < 0xa0) {
+    return false
+  }
+  return code === 0xa0 ||
+    code === 0x1680 ||
+    (code >= 0x2000 && code <= 0x200a) ||
+    code === 0x2028 ||
+    code === 0x2029 ||
+    code === 0x202f ||
+    code === 0x205f ||
+    code === 0x3000 ||
+    code === 0xfeff
+}
+
+/**
+ * Remove the backslashes of the quoted-pairs in header[start, end).
+ * The range is known to be a valid quoted-string body.
+ */
+function unescapeQuotedPairs (header, start, end) {
+  let value = ''
+  let index = start
+  while (index < end) {
+    if (header.charCodeAt(index) === BSLASH) {
+      value += header.slice(start, index)
+      start = ++index
+    }
+    index++
+  }
+  return value + header.slice(start, end)
+}
 
 // default ContentType to prevent repeated object creation
 const defaultContentType = { type: '', parameters: new NullObject() }
 Object.freeze(defaultContentType.parameters)
 Object.freeze(defaultContentType)
+
+// sentinel returned by parseHeader when the parameters are malformed
+const invalidParameterFormat = { type: '', parameters: defaultContentType.parameters }
+Object.freeze(invalidParameterFormat)
+
+/**
+ * Parse media type to object.
+ *
+ * Returns `defaultContentType` when the media type is invalid and
+ * `invalidParameterFormat` when the parameters are malformed.
+ *
+ * @param {string} header
+ * @return {Object}
+ */
+function parseHeader (header) {
+  const len = header.length
+  let index = 0
+  let code = 0
+  let flags = 0
+
+  // skip leading whitespace
+  while (index < len) {
+    code = header.charCodeAt(index)
+    if (!isTrimWhitespace(code)) break
+    index++
+  }
+
+  // media-type = type "/" subtype
+  const typeStart = index
+  let upper = 0
+  while (index < len) {
+    code = header.charCodeAt(index)
+    flags = CHAR_CLASS[code]
+    if ((flags & MEDIA_TYPE_TCHAR) === 0) break
+    upper |= flags
+    index++
+  }
+
+  if (index === typeStart || index === len || code !== SLASH) {
+    return defaultContentType
+  }
+
+  index++ // skip "/"
+  const subtypeStart = index
+  while (index < len) {
+    code = header.charCodeAt(index)
+    flags = CHAR_CLASS[code]
+    if ((flags & MEDIA_TYPE_TCHAR) === 0) break
+    upper |= flags
+    index++
+  }
+
+  if (index === subtypeStart) {
+    return defaultContentType
+  }
+
+  const typeEnd = index
+
+  // skip trailing whitespace
+  while (index < len) {
+    code = header.charCodeAt(index)
+    if (!isTrimWhitespace(code)) break
+    index++
+  }
+
+  if (index !== len && code !== SEMI) {
+    return defaultContentType
+  }
+
+  const type = header.slice(typeStart, typeEnd)
+  const result = {
+    type: (upper & UPPER) !== 0 ? type.toLowerCase() : type,
+    parameters: new NullObject()
+  }
+
+  if (index === len) {
+    return result
+  }
+
+  // parse parameters
+  const parameters = result.parameters
+
+  // *( ";" parameter )
+  // parameter     = token "=" ( token / quoted-string )
+  while (index < len) {
+    index++ // skip ";"
+    while (index < len && header.charCodeAt(index) === SP) {
+      index++
+    }
+
+    const keyStart = index
+    upper = 0
+    while (index < len) {
+      code = header.charCodeAt(index)
+      flags = CHAR_CLASS[code]
+      if ((flags & PARAM_TCHAR) === 0) break
+      upper |= flags
+      index++
+    }
+
+    if (index === keyStart || index === len || code !== EQ) {
+      return invalidParameterFormat
+    }
+
+    const key = header.slice(keyStart, index)
+    index++ // skip "="
+
+    let value
+    if (index < len && header.charCodeAt(index) === DQUOTE) {
+      // quoted-string = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+      index++
+      const valueStart = index
+      let escaped = false
+      while (index < len) {
+        code = header.charCodeAt(index)
+        if (code === DQUOTE) break
+        if ((CHAR_CLASS[code] & QDTEXT) !== 0) {
+          index++
+          continue
+        }
+        if (code !== BSLASH) {
+          return invalidParameterFormat
+        }
+        // quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
+        index++
+        if (index === len) {
+          return invalidParameterFormat
+        }
+        code = header.charCodeAt(index)
+        if (!(code === 0x0b || (code >= 0x20 && code <= 0xff))) {
+          return invalidParameterFormat
+        }
+        escaped = true
+        index++
+      }
+
+      if (index === len) {
+        return invalidParameterFormat
+      }
+
+      value = escaped
+        ? unescapeQuotedPairs(header, valueStart, index)
+        : header.slice(valueStart, index)
+      index++ // skip closing DQUOTE
+    } else {
+      const valueStart = index
+      while (index < len && (CHAR_CLASS[header.charCodeAt(index)] & PARAM_TCHAR) !== 0) {
+        index++
+      }
+
+      if (index === valueStart) {
+        return invalidParameterFormat
+      }
+
+      value = header.slice(valueStart, index)
+    }
+
+    while (index < len && header.charCodeAt(index) === SP) {
+      index++
+    }
+
+    if (index !== len && header.charCodeAt(index) !== SEMI) {
+      return invalidParameterFormat
+    }
+
+    parameters[(upper & UPPER) !== 0 ? key.toLowerCase() : key] = value
+  }
+
+  return result
+}
 
 /**
  * Parse media type to object.
@@ -54,52 +274,13 @@ function parse (header) {
     throw new TypeError('argument header is required and must be a string')
   }
 
-  let index = header.indexOf(';')
-  const type = index !== -1
-    ? header.slice(0, index).trim()
-    : header.trim()
+  const result = parseHeader(header)
 
-  if (mediaTypeRE.test(type) === false) {
+  if (result === defaultContentType) {
     throw new TypeError('invalid media type')
   }
 
-  const result = {
-    type: type.toLowerCase(),
-    parameters: new NullObject()
-  }
-
-  // parse parameters
-  if (index === -1) {
-    return result
-  }
-
-  let key
-  let match
-  let value
-
-  paramRE.lastIndex = index
-
-  while ((match = paramRE.exec(header))) {
-    if (match.index !== index) {
-      throw new TypeError('invalid parameter format')
-    }
-
-    index += match[0].length
-    key = match[1].toLowerCase()
-    value = match[2]
-
-    if (value[0] === '"') {
-      // remove quotes and escapes
-      value = value
-        .slice(1, value.length - 1)
-
-      quotedPairRE.test(value) && (value = value.replace(quotedPairRE, '$1'))
-    }
-
-    result.parameters[key] = value
-  }
-
-  if (index !== header.length) {
+  if (result === invalidParameterFormat) {
     throw new TypeError('invalid parameter format')
   }
 
@@ -111,52 +292,9 @@ function safeParse (header) {
     return defaultContentType
   }
 
-  let index = header.indexOf(';')
-  const type = index !== -1
-    ? header.slice(0, index).trim()
-    : header.trim()
+  const result = parseHeader(header)
 
-  if (mediaTypeRE.test(type) === false) {
-    return defaultContentType
-  }
-
-  const result = {
-    type: type.toLowerCase(),
-    parameters: new NullObject()
-  }
-
-  // parse parameters
-  if (index === -1) {
-    return result
-  }
-
-  let key
-  let match
-  let value
-
-  paramRE.lastIndex = index
-
-  while ((match = paramRE.exec(header))) {
-    if (match.index !== index) {
-      return defaultContentType
-    }
-
-    index += match[0].length
-    key = match[1].toLowerCase()
-    value = match[2]
-
-    if (value[0] === '"') {
-      // remove quotes and escapes
-      value = value
-        .slice(1, value.length - 1)
-
-      quotedPairRE.test(value) && (value = value.replace(quotedPairRE, '$1'))
-    }
-
-    result.parameters[key] = value
-  }
-
-  if (index !== header.length) {
+  if (result === invalidParameterFormat) {
     return defaultContentType
   }
 
