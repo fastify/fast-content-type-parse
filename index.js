@@ -3,6 +3,7 @@
 const NullObject = function NullObject () { }
 NullObject.prototype = Object.create(null)
 
+const HTAB = 0x09 // '\t'
 const SP = 0x20 // ' '
 const SEMI = 0x3b // ';'
 const EQ = 0x3d // '='
@@ -14,60 +15,39 @@ const BSLASH = 0x5c // '\'
  * Character class lookup table, indexed by UTF-16 code unit. It covers the
  * whole code unit range so that lookups are never out of bounds and always
  * yield a small integer, which keeps the scanning loops on V8's fast path.
+ * Code units above 0xff have no class: header field values are octets.
  *
- * tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*"
- *       / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
- *       / DIGIT / ALPHA
- *       ; any VCHAR, except delimiters
+ * RFC 9110 Section 5.6.2:
+ *   tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*"
+ *         / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
+ *         / DIGIT / ALPHA
+ *         ; any VCHAR, except delimiters
  *
- * qdtext = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
- * obs-text = %x80-FF
- *
- * MEDIA_TYPE_TCHAR intentionally omits "`" and QDTEXT accepts VT (0x0b)
- * rather than HTAB, to keep the behaviour of the regular expressions that
- * were previously used for validation.
+ * RFC 9110 Section 5.6.4:
+ *   qdtext      = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
+ *   quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
+ *   obs-text    = %x80-FF
  */
-const MEDIA_TYPE_TCHAR = 1
-const PARAM_TCHAR = 2
-const QDTEXT = 4
+const TCHAR = 1
+const QDTEXT = 2
+const QUOTED_PAIR = 4
 const UPPER = 8
 
 const CHAR_CLASS = new Uint8Array(0x10000)
-for (const ch of '!#$%&\'*+-.^_|~0123456789abcdefghijklmnopqrstuvwxyz') {
-  CHAR_CLASS[ch.charCodeAt(0)] = MEDIA_TYPE_TCHAR | PARAM_TCHAR
+for (const ch of '!#$%&\'*+-.^_`|~0123456789abcdefghijklmnopqrstuvwxyz') {
+  CHAR_CLASS[ch.charCodeAt(0)] = TCHAR
 }
 for (const ch of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
-  CHAR_CLASS[ch.charCodeAt(0)] = MEDIA_TYPE_TCHAR | PARAM_TCHAR | UPPER
+  CHAR_CLASS[ch.charCodeAt(0)] = TCHAR | UPPER
 }
-CHAR_CLASS[0x60] = PARAM_TCHAR // '`'
-CHAR_CLASS[0x0b] |= QDTEXT
-CHAR_CLASS[0x20] |= QDTEXT
-CHAR_CLASS[0x21] |= QDTEXT
-for (let i = 0x23; i <= 0x5b; i++) CHAR_CLASS[i] |= QDTEXT
-for (let i = 0x5d; i <= 0x7e; i++) CHAR_CLASS[i] |= QDTEXT
-for (let i = 0x80; i <= 0xff; i++) CHAR_CLASS[i] |= QDTEXT
-
-/**
- * Whitespace as removed by `String.prototype.trim()`: WhiteSpace and
- * LineTerminator code points per ECMA-262.
- */
-function isTrimWhitespace (code) {
-  if (code <= 0x20) {
-    return code === 0x20 || (code >= 0x09 && code <= 0x0d)
-  }
-  if (code < 0xa0) {
-    return false
-  }
-  return code === 0xa0 ||
-    code === 0x1680 ||
-    (code >= 0x2000 && code <= 0x200a) ||
-    code === 0x2028 ||
-    code === 0x2029 ||
-    code === 0x202f ||
-    code === 0x205f ||
-    code === 0x3000 ||
-    code === 0xfeff
-}
+CHAR_CLASS[HTAB] |= QDTEXT | QUOTED_PAIR
+CHAR_CLASS[SP] |= QDTEXT | QUOTED_PAIR
+CHAR_CLASS[0x21] |= QDTEXT | QUOTED_PAIR
+CHAR_CLASS[DQUOTE] |= QUOTED_PAIR
+for (let i = 0x23; i <= 0x5b; i++) CHAR_CLASS[i] |= QDTEXT | QUOTED_PAIR
+CHAR_CLASS[BSLASH] |= QUOTED_PAIR
+for (let i = 0x5d; i <= 0x7e; i++) CHAR_CLASS[i] |= QDTEXT | QUOTED_PAIR
+for (let i = 0x80; i <= 0xff; i++) CHAR_CLASS[i] |= QDTEXT | QUOTED_PAIR
 
 /**
  * Remove the backslashes of the quoted-pairs in header[start, end).
@@ -96,7 +76,19 @@ const invalidParameterFormat = { type: '', parameters: defaultContentType.parame
 Object.freeze(invalidParameterFormat)
 
 /**
- * Parse media type to object.
+ * Parse media type to object, following RFC 9110 Section 8.3.1:
+ *
+ *   media-type      = type "/" subtype parameters
+ *   type            = token
+ *   subtype         = token
+ *   parameters      = *( OWS ";" OWS [ parameter ] )
+ *   parameter       = parameter-name "=" parameter-value
+ *   parameter-name  = token
+ *   parameter-value = ( token / quoted-string )
+ *   OWS             = *( SP / HTAB )
+ *
+ * Leading and trailing OWS is tolerated, as a field parser is required to
+ * strip it before evaluating the field value (RFC 9110 Section 5.5).
  *
  * Returns `defaultContentType` when the media type is invalid and
  * `invalidParameterFormat` when the parameters are malformed.
@@ -110,20 +102,20 @@ function parseHeader (header) {
   let code = 0
   let flags = 0
 
-  // skip leading whitespace
+  // leading OWS
   while (index < len) {
     code = header.charCodeAt(index)
-    if (!isTrimWhitespace(code)) break
+    if (code !== SP && code !== HTAB) break
     index++
   }
 
-  // media-type = type "/" subtype
+  // type "/" subtype
   const typeStart = index
   let upper = 0
   while (index < len) {
     code = header.charCodeAt(index)
     flags = CHAR_CLASS[code]
-    if ((flags & MEDIA_TYPE_TCHAR) === 0) break
+    if ((flags & TCHAR) === 0) break
     upper |= flags
     index++
   }
@@ -137,7 +129,7 @@ function parseHeader (header) {
   while (index < len) {
     code = header.charCodeAt(index)
     flags = CHAR_CLASS[code]
-    if ((flags & MEDIA_TYPE_TCHAR) === 0) break
+    if ((flags & TCHAR) === 0) break
     upper |= flags
     index++
   }
@@ -148,10 +140,10 @@ function parseHeader (header) {
 
   const typeEnd = index
 
-  // skip trailing whitespace
+  // OWS
   while (index < len) {
     code = header.charCodeAt(index)
-    if (!isTrimWhitespace(code)) break
+    if (code !== SP && code !== HTAB) break
     index++
   }
 
@@ -169,23 +161,34 @@ function parseHeader (header) {
     return result
   }
 
-  // parse parameters
   const parameters = result.parameters
 
-  // *( ";" parameter )
-  // parameter     = token "=" ( token / quoted-string )
+  // *( OWS ";" OWS [ parameter ] )
   while (index < len) {
     index++ // skip ";"
-    while (index < len && header.charCodeAt(index) === SP) {
+
+    // OWS
+    while (index < len) {
+      code = header.charCodeAt(index)
+      if (code !== SP && code !== HTAB) break
       index++
     }
 
+    // empty parameter: trailing ";" or ";;"
+    if (index === len) {
+      return result
+    }
+    if (code === SEMI) {
+      continue
+    }
+
+    // parameter-name
     const keyStart = index
     upper = 0
     while (index < len) {
       code = header.charCodeAt(index)
       flags = CHAR_CLASS[code]
-      if ((flags & PARAM_TCHAR) === 0) break
+      if ((flags & TCHAR) === 0) break
       upper |= flags
       index++
     }
@@ -197,6 +200,7 @@ function parseHeader (header) {
     const key = header.slice(keyStart, index)
     index++ // skip "="
 
+    // parameter-value
     let value
     if (index < len && header.charCodeAt(index) === DQUOTE) {
       // quoted-string = DQUOTE *( qdtext / quoted-pair ) DQUOTE
@@ -215,11 +219,7 @@ function parseHeader (header) {
         }
         // quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
         index++
-        if (index === len) {
-          return invalidParameterFormat
-        }
-        code = header.charCodeAt(index)
-        if (!(code === 0x0b || (code >= 0x20 && code <= 0xff))) {
+        if (index === len || (CHAR_CLASS[header.charCodeAt(index)] & QUOTED_PAIR) === 0) {
           return invalidParameterFormat
         }
         escaped = true
@@ -235,8 +235,9 @@ function parseHeader (header) {
         : header.slice(valueStart, index)
       index++ // skip closing DQUOTE
     } else {
+      // token
       const valueStart = index
-      while (index < len && (CHAR_CLASS[header.charCodeAt(index)] & PARAM_TCHAR) !== 0) {
+      while (index < len && (CHAR_CLASS[header.charCodeAt(index)] & TCHAR) !== 0) {
         index++
       }
 
@@ -247,15 +248,23 @@ function parseHeader (header) {
       value = header.slice(valueStart, index)
     }
 
-    while (index < len && header.charCodeAt(index) === SP) {
+    // OWS
+    while (index < len) {
+      code = header.charCodeAt(index)
+      if (code !== SP && code !== HTAB) break
       index++
     }
 
-    if (index !== len && header.charCodeAt(index) !== SEMI) {
+    if (index !== len && code !== SEMI) {
       return invalidParameterFormat
     }
 
-    parameters[(upper & UPPER) !== 0 ? key.toLowerCase() : key] = value
+    // parameter names are case-insensitive; the first occurrence wins,
+    // matching util.MIMEType, the WHATWG MIME Sniffing standard and content-type
+    const name = (upper & UPPER) !== 0 ? key.toLowerCase() : key
+    if (parameters[name] === undefined) {
+      parameters[name] = value
+    }
   }
 
   return result

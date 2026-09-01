@@ -1,7 +1,7 @@
 {
   "name": "fast-content-type-parse",
   "version": "3.0.0",
-  "description": "Parse HTTP Content-Type header according to RFC 7231",
+  "description": "Parse HTTP Content-Type header according to RFC 9110",
   "main": "index.js",
   "type": "commonjs",
   "types": "./types/index.d.ts",
@@ -17,7 +17,7 @@
   },
   "keywords": [
     "content-type",
-    "rfc7231"
+    "rfc9110"
   ],
   "author": "Aras Abbasi <aras.abbasi@gmail.com>",
   "contributors": [
