@@ -1,6 +1,6 @@
 {
   "name": "fast-content-type-parse",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Parse HTTP Content-Type header according to RFC 9110",
   "main": "index.js",
   "type": "commonjs",
